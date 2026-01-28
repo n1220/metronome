@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>メトロノーム</title>
+    <style>
+        body { font-family: sans-serif; background: #1a1a1a; color: #fff; text-align: center; padding: 20px; }
+        .monitor { background: #222; padding: 20px; border-radius: 10px; border: 2px solid #00ffcc; margin-bottom: 20px; }
+        .display { font-size: 45px; color: #00ffcc; font-weight: bold; }
+        .loop-display { color: #ffcc00; font-size: 18px; margin-top: 5px; }
+        
+        .panel { background: #333; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
+        .panel-row { margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        input, select { padding: 8px; border-radius: 4px; border: none; text-align: center; }
+        input[type="number"] { width: 55px; }
+        
+        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; margin: 2px; }
+        .btn-add { background: #007bff; color: white; }
+        .btn-play { background: #28a745; color: white; font-size: 24px; padding: 15px 50px; margin-top: 20px; width: 100%; }
+        .btn-stop { background: #dc3545; }
+        .btn-save { background: #9b59b6; color: white; }
+        .btn-load { background: #f1c40f; color: #000; }
+        .btn-del-item { background: #e74c3c; color: white; padding: 5px 10px; font-size: 12px; }
+
+        table { width: 100%; max-width: 950px; margin: 20px auto; border-collapse: collapse; }
+        th, td { border-bottom: 1px solid #444; padding: 10px; font-size: 14px; text-align: center; }
+        .active { background: rgba(0, 255, 204, 0.2); border-left: 5px solid #00ffcc; }
+    </style>
+</head>
+<body>
+
+    <div class="monitor">
+        <div class="display"><span id="cur-m">1</span> - <span id="cur-b">1</span></div>
+        <div id="cur-info">STOPPED</div>
+        <div class="loop-display">Loop: <span id="cur-loop">0</span> / <span id="max-loop-display">1</span> | BPM: <span id="cur-bpm-display">--</span></div>
+    </div>
+
+    <div class="panel">
+        <div class="panel-row">
+            小節: <input type="number" id="in-len" value="4">
+            拍子: <input type="number" id="in-m" value="4"> / <input type="number" id="in-n" value="4">
+            BPM: <input type="number" id="in-bpm" value="120">
+            <button class="btn-add" id="add-btn">＋ セクション追加</button>
+        </div>
+        <div class="panel-row" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
+            全ループ: <input type="number" id="loop-count" value="5"> 回 | 
+            加速: <input type="number" id="accel-val" value="5"> BPM/Loop
+        </div>
+        <div class="panel-row">
+            <input type="text" id="save-name" placeholder="メニュー名を入力" style="width: 150px; text-align: left;">
+            <button class="btn-save" id="save-btn">💾 保存</button>
+            <select id="load-select"><option value="">-- 保存済みを選択 --</option></select>
+            <button class="btn-load" id="load-btn">📂 ファイル</button>
+            <button class="btn-del-item" id="delete-storage-btn">🗑️ 消去</button>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr><th>No.</th><th>小節</th><th>拍子</th><th>BPM</th><th>移動</th><th>操作</th></tr>
+        </thead>
+        <tbody id="list-body"></tbody>
+    </table>
+
+    <button id="play-btn" class="btn-play">START</button>
+
+<script>
+    let songStructure = [{ len: 4, m: 4, n: 4, bpm: 100 }];
+    let audioCtx = null, isPlaying = false, nextNoteTime = 0.0, beatCount = 0, measureInSection = 1, sectionIdx = 0, currentLoop = 1, bpmOffset = 0, timerID = null;
+
+    const listBody = document.getElementById('list-body'), playBtn = document.getElementById('play-btn');
+
+    // --- 保存・読込ロジック ---
+    const STORAGE_KEY = 'metronome_presets';
+
+    function getPresets() {
+        return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    }
+
+    function updatePresetList() {
+        const presets = getPresets();
+        const select = document.getElementById('load-select');
+        select.innerHTML = '<option value="">-- 保存済みを選択 --</option>';
+        Object.keys(presets).forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            select.appendChild(opt);
+        });
+    }
+
+    document.getElementById('save-btn').onclick = () => {
+        const name = document.getElementById('save-name').value.trim();
+        if (!name) return alert("名前を入力してください");
+        const presets = getPresets();
+        presets[name] = {
+            structure: songStructure,
+            loops: document.getElementById('loop-count').value,
+            accel: document.getElementById('accel-val').value
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+        updatePresetList();
+        alert("保存しました！");
+    };
+
+    document.getElementById('load-btn').onclick = () => {
+        const name = document.getElementById('load-select').value;
+        const presets = getPresets();
+        if (!presets[name]) return;
+        songStructure = presets[name].structure;
+        document.getElementById('loop-count').value = presets[name].loops;
+        document.getElementById('accel-val').value = presets[name].accel;
+        render();
+    };
+
+    document.getElementById('delete-storage-btn').onclick = () => {
+        const name = document.getElementById('load-select').value;
+        if (!name) return;
+        if (confirm(`${name} を削除しますか？`)) {
+            const presets = getPresets();
+            delete presets[name];
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+            updatePresetList();
+        }
+    };
+
+    // --- メトロノーム基本機能 ---
+    function render() {
+        listBody.innerHTML = '';
+        songStructure.forEach((s, idx) => {
+            const tr = document.createElement('tr');
+            tr.id = `row-${idx}`;
+            tr.innerHTML = `<td>${idx+1}</td><td>${s.len}</td><td>${s.m}/${s.n}</td><td>${s.bpm}</td>
+                <td><input type="number" style="width:35px" id="jump-${idx}" value="${idx+1}"><button onclick="jumpSection(${idx})">Go</button></td>
+                <td><button onclick="copySection(${idx})">複製</button><button onclick="deleteSection(${idx})">×</button></td>`;
+            listBody.appendChild(tr);
+        });
+    }
+
+    window.jumpSection = (f) => { 
+        let t = parseInt(document.getElementById(`jump-${f}`).value)-1;
+        const item = songStructure.splice(f, 1)[0];
+        songStructure.splice(t, 0, item); render();
+    };
+    window.copySection = (idx) => { songStructure.splice(idx+1, 0, {...songStructure[idx]}); render(); };
+    window.deleteSection = (idx) => { songStructure.splice(idx, 1); render(); };
+    document.getElementById('add-btn').onclick = () => {
+        songStructure.push({ len: parseFloat(document.getElementById('in-len').value), m: parseFloat(document.getElementById('in-m').value), n: parseFloat(document.getElementById('in-n').value), bpm: parseFloat(document.getElementById('in-bpm').value) });
+        render();
+    };
+
+    function playClick(time, beat) {
+        const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
+        osc.frequency.value = (Math.floor(beat) === 0) ? 1200 : 800;
+        gain.gain.setValueAtTime(0.1, time); gain.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(time); osc.stop(time + 0.05);
+    }
+
+    function scheduler() {
+        const maxLoops = parseInt(document.getElementById('loop-count').value), accel = parseInt(document.getElementById('accel-val').value);
+        document.getElementById('max-loop-display').textContent = maxLoops;
+        while (nextNoteTime < audioCtx.currentTime + 0.1) {
+            const current = songStructure[sectionIdx];
+            if (!current) {
+                if (currentLoop < maxLoops) { currentLoop++; sectionIdx = 0; bpmOffset += accel; continue; }
+                else { togglePlay(); return; }
+            }
+            const activeBPM = current.bpm + bpmOffset;
+            document.querySelectorAll('tr').forEach(r => r.className = '');
+            if(document.getElementById(`row-${sectionIdx}`)) document.getElementById(`row-${sectionIdx}`).className = 'active';
+            document.getElementById('cur-m').textContent = measureInSection;
+            document.getElementById('cur-b').textContent = Math.floor(beatCount) + 1;
+            document.getElementById('cur-loop').textContent = currentLoop;
+            document.getElementById('cur-bpm-display').textContent = activeBPM;
+            document.getElementById('cur-info').textContent = `${current.m}/${current.n}拍子 / ${activeBPM}BPM`;
+            playClick(nextNoteTime, beatCount);
+            const secondsPerBeat = (60.0 / activeBPM) * (4.0 / current.n);
+            let step = 1.0; if (beatCount + 1 > current.m) step = current.m - beatCount;
+            nextNoteTime += secondsPerBeat * step;
+            beatCount += step;
+            if (beatCount >= current.m) { beatCount = 0; measureInSection++; if (measureInSection > current.len) { measureInSection = 1; sectionIdx++; } }
+        }
+        timerID = setTimeout(scheduler, 25);
+    }
+
+    function togglePlay() {
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (songStructure.length === 0) return;
+        isPlaying = !isPlaying;
+        if (isPlaying) { sectionIdx = 0; beatCount = 0; measureInSection = 1; currentLoop = 1; bpmOffset = 0; nextNoteTime = audioCtx.currentTime; scheduler(); playBtn.textContent = 'STOP'; playBtn.classList.add('btn-stop'); }
+        else { clearTimeout(timerID); playBtn.textContent = 'START'; playBtn.classList.remove('btn-stop'); document.getElementById('cur-info').textContent = 'STOPPED'; }
+    }
+    playBtn.onclick = togglePlay;
+    updatePresetList(); render();
+</script>
+</body>
+</html>
