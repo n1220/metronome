@@ -4,220 +4,139 @@
     <meta charset="UTF-8">
     <title>メトロノーム</title>
     <style>
-        :root { --main-color: #00ffcc; --bg-dark: #1a1a1a; --panel-bg: #333; }
-        body { font-family: sans-serif; background: var(--bg-dark); color: #fff; text-align: center; padding: 20px; margin: 0; }
-        .monitor { background: #222; padding: 20px; border-radius: 10px; border: 2px solid var(--main-color); margin-bottom: 20px; }
-        .display { font-size: 45px; color: var(--main-color); font-weight: bold; }
-        .loop-display { color: #ffcc00; font-size: 18px; margin-top: 5px; }
-        .panel { background: var(--panel-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: left; }
+        :root { 
+            --bg: #1a1a1b; --panel: #2d2d2e; --txt: #fff;
+            --ok: #00fa9a; --err: #ff4b00; --info: #3da4ff; --warn: #f39c12; --brd: #4a4a4b;
+        }
+        body { font-family: sans-serif; background: var(--bg); color: var(--txt); text-align: center; padding: 15px; margin: 0; line-height: 1.5; }
+        .monitor { background: #000; padding: 20px; border-radius: 12px; border: 3px solid var(--info); margin-bottom: 15px; }
+        .display { font-size: 48px; color: var(--ok); font-weight: bold; }
+        .loop-display { color: var(--warn); font-size: 18px; margin-top: 8px; border-top: 1px solid var(--brd); padding-top: 8px; }
+        .panel { background: var(--panel); padding: 15px; border-radius: 10px; border: 1px solid var(--brd); margin-bottom: 15px; text-align: left; }
         .panel-row { margin-bottom: 10px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
-        input, select { padding: 8px; border-radius: 4px; border: none; text-align: center; font-size: 14px; }
-        input[type="number"] { width: 55px; }
-        .vol-row { background: rgba(0, 255, 204, 0.1); padding: 10px; border-radius: 5px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-        input[type="range"] { flex-grow: 1; cursor: pointer; accent-color: var(--main-color); }
-        button { padding: 8px 12px; cursor: pointer; border: none; border-radius: 5px; font-weight: bold; transition: opacity 0.2s; }
-        button:hover { opacity: 0.8; }
-        .btn-add { background: #007bff; color: white; }
-        .btn-play { background: #28a745; color: white; font-size: 24px; padding: 15px 50px; width: 100%; margin-top: 10px; }
-        .btn-stop { background: #dc3545; }
-        .btn-save { background: #9b59b6; color: white; }
-        .btn-load { background: #f1c40f; color: #000; }
-        .btn-del-item { background: #e74c3c; color: white; padding: 5px 10px; font-size: 12px; }
-        table { width: 100%; max-width: 950px; margin: 20px auto; border-collapse: collapse; background: #222; }
-        th, td { border-bottom: 1px solid #444; padding: 10px; font-size: 14px; text-align: center; }
-        .active { background: rgba(0, 255, 204, 0.2); border-left: 5px solid var(--main-color); }
+        input, select { padding: 8px; border-radius: 6px; border: 2px solid var(--brd); background: #1a1a1b; color: #fff; font-weight: bold; }
+        input[type="number"] { width: 65px; }
+        .vol-row { background: rgba(61, 164, 255, 0.15); padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 12px; border: 2px solid var(--info); }
+        input[type="range"] { flex-grow: 1; accent-color: var(--info); cursor: pointer; }
+        button { padding: 8px 14px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; transition: opacity 0.2s; }
+        .btn-add { background: var(--info); color: #000; }
+        .btn-play { background: var(--ok); color: #000; font-size: 24px; padding: 15px; width: 100%; margin-top: 10px; }
+        .btn-stop { background: var(--err) !important; color: #fff; }
+        table { width: 100%; max-width: 900px; margin: 15px auto; border-collapse: separate; border-spacing: 0 4px; }
+        th { background: #333; padding: 10px; font-size: 14px; border-bottom: 2px solid var(--brd); }
+        td { background: #252526; padding: 10px; font-size: 14px; border-top: 1px solid var(--brd); border-bottom: 1px solid var(--brd); }
+        .active { background: #3d4d4a !important; outline: 3px solid var(--ok); outline-offset: -3px; color: var(--ok); font-weight: bold; }
     </style>
 </head>
 <body>
 
     <div class="monitor">
         <div class="display"><span id="cur-m">--</span> - <span id="cur-b">--</span></div>
-        <div id="cur-info">READY</div>
+        <div id="cur-info">READY (Optimized)</div>
         <div class="loop-display">Loop: <span id="cur-loop">0</span> / <span id="max-loop-display">0</span> | BPM: <span id="cur-bpm-display">--</span></div>
     </div>
 
     <div class="panel">
-        <div class="vol-row">
-            <span>🔈 音量</span>
-            <input type="range" id="vol-slider" min="0" max="100" value="50">
-            <span id="vol-val" style="width: 40px;">50%</span>
-        </div>
+        <div class="vol-row"><span>🔊 VOL</span><input type="range" id="vol-slider" min="0" max="150" value="80"><span id="vol-val">80%</span></div>
         <div class="panel-row">
-            小節: <input type="number" id="in-len" value="4">
-            拍子: <input type="number" id="in-m" value="4"> / <input type="number" id="in-n" value="4">
+            小節: <input type="number" id="in-len" value="4"> 
+            拍子: <input type="number" id="in-m" value="4"> / <input type="number" id="in-n" value="4"> 
             BPM: <input type="number" id="in-bpm" value="120">
-            <button class="btn-add" onclick="addSection()">＋ セクション追加</button>
+            <button class="btn-add" onclick="addS()">＋ 追加</button>
         </div>
-        <div class="panel-row" style="background: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;">
-            全ループ: <input type="number" id="loop-count" value="1"> 回 | 
-            加速: <input type="number" id="accel-val" value="0"> BPM/Loop
+        <div class="panel-row" style="background: rgba(255,255,255,0.05); padding: 8px; border-radius: 8px;">
+            ループ: <input type="number" id="loop-count" value="1"> 回 | 加速: <input type="number" id="accel-val" value="0">
         </div>
         <div class="panel-row">
-            <input type="text" id="save-name" placeholder="メニュー名" style="width: 120px; text-align: left;">
-            <button class="btn-save" onclick="savePreset()">💾 保存</button>
-            <select id="load-select"><option value="">-- 保存済み --</option></select>
-            <button class="btn-load" onclick="loadPreset()">📂 読込</button>
-            <button class="btn-del-item" onclick="deletePreset()">🗑️ 消去</button>
+            <input type="text" id="save-name" placeholder="保存名" style="width: 100px;">
+            <button style="background:#bf7fff" onclick="saveP()">💾 保存</button>
+            <select id="load-select"><option value="">-- 読込 --</option></select>
+            <button style="background:#fdfd8e" onclick="loadP()">📂 読込</button>
+            <button style="background:var(--err); color:#fff" onclick="delP()">🗑️</button>
         </div>
     </div>
 
-    <table id="metronome-table">
-        <thead>
-            <tr><th>No.</th><th>小節</th><th>拍子</th><th>BPM</th><th>移動</th><th>操作</th></tr>
-        </thead>
+    <table>
+        <thead><tr><th>No.</th><th>小節</th><th>拍子</th><th>BPM</th><th>移動</th><th>操作</th></tr></thead>
         <tbody id="list-body"></tbody>
     </table>
-
     <button id="play-btn" class="btn-play" onclick="togglePlay()">START</button>
 
 <script>
-    // 初期リストを空に設定
-    let songStructure = [];
-    let audioCtx = null, masterGain = null, isPlaying = false, timerID = null;
-    let nextNoteTime = 0.0, beatCount = 0, measureInSection = 1, sectionIdx = 0, currentLoop = 1, bpmOffset = 0;
-    let lastSectionIdx = -1;
-
-    const el = (id) => document.getElementById(id);
-    const STORAGE_KEY = 'metronome_presets_v2';
+    let songStructure = [], audioCtx = null, masterGain = null, isPlaying = false, timerID = null;
+    let nextTime = 0, beat = 0, mInS = 1, sIdx = 0, curL = 1, bpmO = 0, lastSIdx = -1;
+    const el = (id) => document.getElementById(id), KEY = 'metronome_presets_v2';
 
     el('vol-slider').oninput = (e) => {
-        const v = e.target.value;
-        el('vol-val').textContent = v + "%";
-        if (masterGain) masterGain.gain.setTargetAtTime(v / 100, audioCtx.currentTime, 0.01);
+        const v = e.target.value; el('vol-val').textContent = v + "%";
+        if (masterGain) masterGain.gain.setTargetAtTime(v / 80, audioCtx.currentTime, 0.01);
     };
 
-    const getPresets = () => JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    const updatePresetList = () => {
-        const presets = getPresets();
-        el('load-select').innerHTML = '<option value="">-- 保存済み --</option>' + 
-            Object.keys(presets).map(name => `<option value="${name}">${name}</option>`).join('');
+    const getP = () => JSON.parse(localStorage.getItem(KEY) || '{}');
+    const upList = () => {
+        const p = getP(); el('load-select').innerHTML = '<option value="">-- 読込 --</option>' + Object.keys(p).map(n => `<option value="${n}">${n}</option>`).join('');
     };
 
-    const savePreset = () => {
-        const name = el('save-name').value.trim();
-        if (!name || songStructure.length === 0) return alert("名前を入力し、セクションを1つ以上追加してください");
-        const p = getPresets();
-        p[name] = { s: songStructure, l: el('loop-count').value, a: el('accel-val').value };
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(p));
-        updatePresetList(); alert("保存完了");
+    const saveP = () => {
+        const n = el('save-name').value.trim(); if (!n || !songStructure.length) return alert("入力不足");
+        const p = getP(); p[n] = { s: songStructure, l: el('loop-count').value, a: el('accel-val').value };
+        localStorage.setItem(KEY, JSON.stringify(p)); upList(); alert("保存完了");
     };
 
-    const loadPreset = () => {
-        const name = el('load-select').value;
-        const p = getPresets()[name];
-        if (!p) return;
-        songStructure = p.s; el('loop-count').value = p.l; el('accel-val').value = p.a;
-        render();
+    const loadP = () => {
+        const d = getP()[el('load-select').value]; if (!d) return;
+        songStructure = d.s; el('loop-count').value = d.l; el('accel-val').value = d.a; render();
     };
 
-    const deletePreset = () => {
-        const name = el('load-select').value;
-        if (name && confirm(name + " を消去？")) {
-            const p = getPresets(); delete p[name];
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(p)); updatePresetList();
-        }
+    const delP = () => {
+        const n = el('load-select').value; if (n && confirm("削除？")) { const p = getP(); delete p[n]; localStorage.setItem(KEY, JSON.stringify(p)); upList(); }
     };
 
     const render = () => {
-        el('list-body').innerHTML = songStructure.map((s, i) => `
-            <tr id="row-${i}">
-                <td>${i+1}</td><td>${s.len}</td><td>${s.m}/${s.n}</td><td>${s.bpm}</td>
-                <td><input type="number" id="jump-${i}" value="${i+1}" style="width:35px"><button onclick="jumpSection(${i})">Go</button></td>
-                <td><button onclick="copySection(${i})">複製</button><button onclick="deleteSection(${i})">×</button></td>
-            </tr>`).join('');
+        el('list-body').innerHTML = songStructure.map((s, i) => `<tr id="row-${i}"><td>${i+1}</td><td>${s.len}</td><td>${s.m}/${s.n}</td><td>${s.bpm}</td><td><input type="number" id="j-${i}" value="${i+1}" style="width:35px"><button onclick="jump(${i})">Go</button></td><td><button onclick="copy(${i})">複製</button><button style="background:var(--err);color:#fff" onclick="del(${i})">×</button></td></tr>`).join('');
     };
 
-    const addSection = () => {
-        songStructure.push({ len: parseFloat(el('in-len').value), m: parseFloat(el('in-m').value), n: parseFloat(el('in-n').value), bpm: parseFloat(el('in-bpm').value) });
-        render();
+    const addS = () => {
+        songStructure.push({ len: +el('in-len').value, m: +el('in-m').value, n: +el('in-n').value, bpm: +el('in-bpm').value }); render();
     };
-    window.jumpSection = (f) => {
-        let t = parseInt(el(`jump-${f}`).value) - 1;
-        songStructure.splice(t < 0 ? 0 : t, 0, songStructure.splice(f, 1)[0]); render();
-    };
-    window.copySection = (i) => { songStructure.splice(i+1, 0, {...songStructure[i]}); render(); };
-    window.deleteSection = (i) => { songStructure.splice(i, 1); render(); };
+    window.jump = (f) => { let t = +el(`j-${f}`).value - 1; songStructure.splice(t < 0 ? 0 : t, 0, songStructure.splice(f, 1)[0]); render(); };
+    window.copy = (i) => { songStructure.splice(i+1, 0, {...songStructure[i]}); render(); };
+    window.del = (i) => { songStructure.splice(i, 1); render(); };
 
-    const playClick = (time, beat, isSectionChange) => {
-        const osc = audioCtx.createOscillator(), g = audioCtx.createGain();
-        
-        // 音色の設定
-        if (isSectionChange) {
-            osc.frequency.setValueAtTime(2200, time); // 切り替わり：超高音
-            g.gain.setValueAtTime(0.12, time);
-        } else if (Math.floor(beat) === 0) {
-            osc.frequency.setValueAtTime(1200, time); // 小節頭：高音
-            g.gain.setValueAtTime(0.1, time);
-        } else {
-            osc.frequency.setValueAtTime(800, time);  // 通常：低音
-            g.gain.setValueAtTime(0.08, time);
-        }
-        
-        g.gain.exponentialRampToValueAtTime(0.001, time + 0.05);
-        osc.connect(g).connect(masterGain);
-        osc.start(time); osc.stop(time + 0.05);
+    const click = (t, b, chg) => {
+        const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.type = 'triangle';
+        o.frequency.setValueAtTime(chg ? 2000 : (Math.floor(b) === 0 ? 1200 : 800), t);
+        g.gain.setValueAtTime(chg ? 0.4 : (Math.floor(b) === 0 ? 0.3 : 0.2), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.08); o.connect(g).connect(masterGain); o.start(t); o.stop(t + 0.08);
     };
 
     function scheduler() {
-        const maxL = parseInt(el('loop-count').value), acc = parseInt(el('accel-val').value);
-        el('max-loop-display').textContent = maxL;
-
-        while (nextNoteTime < audioCtx.currentTime + 0.1) {
-            const cur = songStructure[sectionIdx];
-            if (!cur) {
-                if (currentLoop < maxL) { currentLoop++; sectionIdx = 0; bpmOffset += acc; continue; }
-                else { togglePlay(); return; }
-            }
-            
-            const isSectionChange = (sectionIdx !== lastSectionIdx);
-            lastSectionIdx = sectionIdx;
-
-            const bpm = cur.bpm + bpmOffset;
-            el('cur-m').textContent = measureInSection;
-            el('cur-b').textContent = Math.floor(beatCount) + 1;
-            el('cur-loop').textContent = currentLoop;
-            el('cur-bpm-display').textContent = Math.round(bpm);
-            el('cur-info').textContent = `${cur.m}/${cur.n}拍子 / ${Math.round(bpm)}BPM`;
-
-            document.querySelectorAll('tr').forEach(r => r.classList.remove('active'));
-            el(`row-${sectionIdx}`)?.classList.add('active');
-
-            playClick(nextNoteTime, beatCount, isSectionChange);
-            
-            const dur = (60.0 / bpm) * (4.0 / cur.n);
-            let step = 1.0; if (beatCount + 1 > cur.m) step = cur.m - beatCount;
-            nextNoteTime += dur * step;
-            beatCount += step;
-            
-            if (beatCount >= cur.m) { 
-                beatCount = 0; measureInSection++; 
-                if (measureInSection > cur.len) { measureInSection = 1; sectionIdx++; } 
-            }
+        const mL = +el('loop-count').value, acc = +el('accel-val').value; el('max-loop-display').textContent = mL;
+        while (nextTime < audioCtx.currentTime + 0.1) {
+            const c = songStructure[sIdx];
+            if (!c) { if (curL < mL) { curL++; sIdx = 0; bpmO += acc; continue; } else return togglePlay(); }
+            const isChg = (sIdx !== lastSIdx); lastSIdx = sIdx;
+            const bpm = c.bpm + bpmO;
+            el('cur-m').textContent = mInS; el('cur-b').textContent = Math.floor(beat) + 1;
+            el('cur-loop').textContent = curL; el('cur-bpm-display').textContent = Math.round(bpm);
+            document.querySelectorAll('tr').forEach(r => r.classList.remove('active')); el(`row-${sIdx}`)?.classList.add('active');
+            click(nextTime, beat, isChg);
+            const dur = (60 / bpm) * (4 / c.n);
+            let s = 1.0; if (beat + 1 > c.m) s = c.m - beat;
+            nextTime += dur * s; beat += s;
+            if (beat >= c.m) { beat = 0; mInS++; if (mInS > c.len) { mInS = 1; sIdx++; } }
         }
         timerID = setTimeout(scheduler, 25);
     }
 
     function togglePlay() {
-        if (songStructure.length === 0) return alert("セクションを追加してください");
-        if (!audioCtx) {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = el('vol-slider').value / 100;
-            masterGain.connect(audioCtx.destination);
-        }
+        if (!songStructure.length) return alert("追加してください");
+        if (!audioCtx) { audioCtx = new AudioContext(); masterGain = audioCtx.createGain(); masterGain.gain.value = el('vol-slider').value / 80; masterGain.connect(audioCtx.destination); }
         isPlaying = !isPlaying;
-        if (isPlaying) {
-            sectionIdx = beatCount = bpmOffset = 0; 
-            measureInSection = currentLoop = 1; lastSectionIdx = -1;
-            nextNoteTime = audioCtx.currentTime; scheduler();
-            el('play-btn').textContent = 'STOP'; el('play-btn').classList.add('btn-stop');
-        } else {
-            clearTimeout(timerID); el('play-btn').textContent = 'START'; el('play-btn').classList.remove('btn-stop');
-            el('cur-info').textContent = 'STOPPED';
-        }
+        if (isPlaying) { sIdx = beat = bpmO = 0; mInS = curL = 1; lastSIdx = -1; nextTime = audioCtx.currentTime; scheduler(); el('play-btn').textContent = 'STOP'; el('play-btn').classList.add('btn-stop'); }
+        else { clearTimeout(timerID); el('play-btn').textContent = 'START'; el('play-btn').classList.remove('btn-stop'); }
     }
-
-    updatePresetList(); render();
+    upList(); render();
 </script>
 </body>
 </html>
